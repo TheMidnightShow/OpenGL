@@ -2,5 +2,9 @@ LIB=-lGL 		\
 		-lGLEW 	\
 		-lglfw	\
 
-OpenGL: main.cpp
-	g++ $(LIB) main.cpp -o OpenGL
+SRC=main.cpp 		\
+		window.h 		\
+		window.cpp 	\
+
+OpenGL: $(SRC) 
+	g++ $(LIB) $(SRC) -o OpenGL
