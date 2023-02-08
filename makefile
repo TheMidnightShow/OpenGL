@@ -1,10 +1,12 @@
 LIB=-lGL 		\
 		-lGLEW 	\
 		-lglfw	\
-
-SRC=main.cpp 		\
-		window.h 		\
+ 
+FILE=main.cpp 	\
 		window.cpp 	\
+	 	window.h 		\
+		shader.cpp 	\
+		shader.h 		\
 
-OpenGL: $(SRC) 
-	g++ $(LIB) $(SRC) -o OpenGL
+OpenGL : $(FILE) 
+	g++ $(LIB) $(FILE) -o OpenGL
