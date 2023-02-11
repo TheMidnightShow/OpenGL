@@ -1,138 +1,129 @@
-# Graphics Pipeline
+# Texture loading
 
-data in OpenGL is inside a 3D space, but displayed on a 2D screen.
+> [!note]
+> - this step require [stb_image](https://github.com/nothings/stb) header
 
-how this data is transformed from 3D to 2D is managed by a graphics pipeline, where it should go through some steps.
+texture loading is much similar to vertex buffer generation we did in the previous branch.
+Three things must be done to have a functional texture.
 
-- vertex shader
-- shape assembly
-- geometry shader
-- rasterization
-- fragment shader
-- test and blending
+- generate texture and its parameters.
+- set an image to the texture buffer.
+- bind texture inside window loop.
 
-we will mainly care about two of these right now, vertex and fragment shaders
+# Generate texture and parameters
+```cpp
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 
-### Vertex Shaders
-- [ ] take some input data and transform it. also pass data to the fragment shader.
-you can understand vertex shaders as a process to transform data into visuals.
+unsigned int texture;
 
-### Fragment Shaders
-is designated to give the pixels its final color, get some data from vertex shaders and can change it internally.
-visual data given by the vertex shaders comes to life once fragment shaders give color to those lifeless figures in your screen.
+/* generate and bind */
+glGenTextures(1, &texture);
+glBindTexture(GL_TEXTURE_2D, texture);
 
-# how do I give data to shaders?
+/* set texture parameters */
+glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
-shaders can get data through little programs created for your gpu inside our program.
+glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+```
 
-we will divide this problem in steps.
-
-### create some data to use.
+# Set texture image
 ```cpp
 
-float data[]
-{/* x_axis, y_axis, z_axis */
-	-0.5f, -0.5f, 0.0f,
-	 0.5f, -0.5f, 0.0f,
-	 0.0f,  0.5f, 0.0f
+/* load image data */
+int width;
+int height;
+int channels;
+
+unsigned char* image_data = stbi_load("<path_to_image>", &width, &height, &channels, 0);
+
+/* set image data to image buffer */
+glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, image_data);
+glGenerateMipmap(GL_TEXTURE_2D);
+
+/* free image data */
+stbi_image_free(image_data);
+
+/* unbind */
+glBindTexture(GL_TEXTURE_2D, 0);
+```
+
+# Use texture
+```cpp
+/* inside window loop */
+{
+	glBindTexture(GL_TEXTURE_2D, texture);
+}
+```
+
+that'll be all for the texture only, you need to adapt your shaders as well if you want to use the texture you want.
+
+### cpp data
+```cpp
+float vertex_info[]
+{
+/*  vertex position    texture position*/
+	0.0f, 0.0f, 0.0f,  0.0f, 0.0f,
+	0.5f, 0.0f, 0.0f,  0.0f, 0.0f,
+	0.0f, 0.5f, 0.0f,  0.0f, 0.0f,
+	0.5f, 0.0f, 0.0f,  0.0f, 0.0f, 
+	0.5f, 0.5f, 0.0f,  0.0f, 0.0f,
+	0.0f, 0.5f, 0.0f,  0.0f, 0.0f,
 };
 ```
 
-### give the data to OpenGL.
+### vertex shader
 ```cpp
-/* where vertex data will be stored */
-unsigned int vertex_array;
-unsigned int vertex_buffer;
+#version 330 core
 
-/* generate arrays and buffers */
-glGenVertexArrays(1, &vertex_array);
-glGenBuffers(1, &vertex_object);
+layout (location = 0) in vec3 a_position;
+layout (location = 1) in vec2 t_position;
 
-/* bind buffers to store data */
-glBindVertexArray(vertex_array);
-glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
+out vec2 texture_position;
 
-/* put data inside buffer */
-glBufferData(GL_ARRAY_BUFFER, sizeof(data), data, GL_STATIC_DRAW);
-
-/* specify data layout */
-glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3, (void*)0);
-glEnableVertexAttribArray(0);
-
-/* unbind */
-glBindVertexArray(0);
-```
-
-### create our shader program.
-```cpp
-/* create vertex shader code */
-const char* vertex_shader = 
-	"#version 330 core\n"
-	"layout (location = 0) in vec3 a_position;\n"
-	"void main()\n"
-	"{\n"
-	"gl_Position = vec4(a_position, 1.0f);\n"
-	"}\n";
-	
-/* create fragment shader code */
-const char* fragment_shader =	
-	"#version 330 core\n"
-	"out vec4 fragment_position;\n"
-	"void main()\n"
-	"{\n"
-	"fragment_position = vec4(0.0f, 1.0f, 0.5f, 1.0f);\n"
-	"}\n";
-
-/* compile shaders */
-unsigned int vertex_program = glCreateShader(GL_VERTEX_SHADER);
-glShaderSource(vertex_program, 1, &vertex_shader, NULL);
-glCompileShader(vertex_program);
-
-unsigned int fragment_program = glCreateShader(GL_FRAGMENT_SHADER);
-glShaderSource(fragment_program, 1, &fragment_shader, NULL);
-glCompileShader(fragment_program);
-
-/* link program */
-unsigned int shader_program = glCreateProgram();
-glAttachShader(shader_program, vertex_program);
-glAttachShader(shader_program, fragment_program);
-glLinkProgram(shader_program);
-
-/* delete shaders */
-glDeleteShader(vertex_program);
-glDeleteShader(fragment_program);
-```
-
-### render to our screen.
-```cpp
-/* inside your window update loop */
+void main()
 {
-	/* use shader program */
+	gl_Position = vec4(a_position, 1.0f);
+	texture_position = t_position;
+}
+```
+
+### fragment shader
+```cpp
+#version 330 core
+
+in vec2 texture_position;
+out vec4 fragment;
+
+uniform sampler2D texture_image;
+
+void main()
+{
+	fragment = texture(texture_image, texture_position);
+}
+```
+
+### drawing
+```cpp
+/* window loop */
+{
+	glBindTexture(GL_TEXTURE_2D, texture);
 	glUseProgram(shader_program);
-	
-	/* bind vertex and draw */
-	glBindVertexArray(vertex_buffer);
-	glDrawArrays(GL_TRIANGLES, 0, 3);
-	
-	/* unbind */
-	glUseProgram(0);
+
+	glBindVertexArray(vertex_array);
+	glDrawArrays(GL_TRIANGLES, 0, 6);
 	glBindVertexArray(0);
 }
 ```
 
-# notes
-this is just an explanation on how it is supposed to work, not how is supposed to be implemented.
-this branch will get three extra files.
+# Reference
 
-- shader.cpp
-- shader.h
-- triangle.shader
+like always, I'll leave a link to LearnOpenGL as it is a really good resource to understand how to work with OpenGL.
+Check stb image if you have any doubts about image loading.
+Take a look to docs.gl to understand what each gl function does.
 
-which will offer a personal preference to implement shader loading.
-
-# references
-I will leave a link to openGL functions, so you can check what is OpenGL askin for in every step we went through.
-And also a link to LearnOpenGL to get a better perspective of this topic.
-
-[docs.gl](https://docs.gl/)
-[LearnOpenGL | hello triangle](https://learnopengl.com/Getting-started/Hello-Triangle)
+[Learn OpenGL | Textures ](https://learnopengl.com/Getting-started/Textures)
+[stb_image](https://github.com/nothings/stb)
+[docs.gl](https://docs.gl)
