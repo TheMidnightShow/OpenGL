@@ -14,7 +14,7 @@ how this data is transformed from 3D to 2D is managed by a graphics pipeline, wh
 we will mainly care about two of these right now, vertex and fragment shaders
 
 ### Vertex Shaders
-- [ ] take some input data and transform it. also pass data to the fragment shader.
+take some input data and transform it. also pass data to the fragment shader.
 you can understand vertex shaders as a process to transform data into visuals.
 
 ### Fragment Shaders
