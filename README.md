@@ -1,138 +1,115 @@
-# Graphics Pipeline
 
-data in OpenGL is inside a 3D space, but displayed on a 2D screen.
+# GLSL
 
-how this data is transformed from 3D to 2D is managed by a graphics pipeline, where it should go through some steps.
+The OpenGL shading language is used to create our shader programs in a C fashioned sintax to make things a bit easier.
 
-- vertex shader
-- shape assembly
-- geometry shader
-- rasterization
-- fragment shader
-- test and blending
+this section will have an `example.shader` file used to create a boring triangle with multiple colors.
 
-we will mainly care about two of these right now, vertex and fragment shaders
+the structure is really simple
 
-### Vertex Shaders
-- [ ] take some input data and transform it. also pass data to the fragment shader.
-you can understand vertex shaders as a process to transform data into visuals.
+- declare a glsl version through directive \#version
+- declare any variable you need for your program
+- insert program logic inside main function
 
-### Fragment Shaders
-is designated to give the pixels its final color, get some data from vertex shaders and can change it internally.
-visual data given by the vertex shaders comes to life once fragment shaders give color to those lifeless figures in your screen.
-
-# how do I give data to shaders?
-
-shaders can get data through little programs created for your gpu inside our program.
-
-we will divide this problem in steps.
-
-### create some data to use.
 ```cpp
+#version 460 core
+layout (location = 0) in vec3 a_position;
 
-float data[]
-{/* x_axis, y_axis, z_axis */
-	-0.5f, -0.5f, 0.0f,
-	 0.5f, -0.5f, 0.0f,
-	 0.0f,  0.5f, 0.0f
-};
-```
-
-### give the data to OpenGL.
-```cpp
-/* where vertex data will be stored */
-unsigned int vertex_array;
-unsigned int vertex_buffer;
-
-/* generate arrays and buffers */
-glGenVertexArrays(1, &vertex_array);
-glGenBuffers(1, &vertex_object);
-
-/* bind buffers to store data */
-glBindVertexArray(vertex_array);
-glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
-
-/* put data inside buffer */
-glBufferData(GL_ARRAY_BUFFER, sizeof(data), data, GL_STATIC_DRAW);
-
-/* specify data layout */
-glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3, (void*)0);
-glEnableVertexAttribArray(0);
-
-/* unbind */
-glBindVertexArray(0);
-```
-
-### create our shader program.
-```cpp
-/* create vertex shader code */
-const char* vertex_shader = 
-	"#version 330 core\n"
-	"layout (location = 0) in vec3 a_position;\n"
-	"void main()\n"
-	"{\n"
-	"gl_Position = vec4(a_position, 1.0f);\n"
-	"}\n";
-	
-/* create fragment shader code */
-const char* fragment_shader =	
-	"#version 330 core\n"
-	"out vec4 fragment_position;\n"
-	"void main()\n"
-	"{\n"
-	"fragment_position = vec4(0.0f, 1.0f, 0.5f, 1.0f);\n"
-	"}\n";
-
-/* compile shaders */
-unsigned int vertex_program = glCreateShader(GL_VERTEX_SHADER);
-glShaderSource(vertex_program, 1, &vertex_shader, NULL);
-glCompileShader(vertex_program);
-
-unsigned int fragment_program = glCreateShader(GL_FRAGMENT_SHADER);
-glShaderSource(fragment_program, 1, &fragment_shader, NULL);
-glCompileShader(fragment_program);
-
-/* link program */
-unsigned int shader_program = glCreateProgram();
-glAttachShader(shader_program, vertex_program);
-glAttachShader(shader_program, fragment_program);
-glLinkProgram(shader_program);
-
-/* delete shaders */
-glDeleteShader(vertex_program);
-glDeleteShader(fragment_program);
-```
-
-### render to our screen.
-```cpp
-/* inside your window update loop */
+void main()
 {
-	/* use shader program */
-	glUseProgram(shader_program);
-	
-	/* bind vertex and draw */
-	glBindVertexArray(vertex_buffer);
-	glDrawArrays(GL_TRIANGLES, 0, 3);
-	
-	/* unbind */
-	glUseProgram(0);
-	glBindVertexArray(0);
+	gl_Position = vec4(a_position, 1.0f);
 }
 ```
 
-# notes
-this is just an explanation on how it is supposed to work, not how is supposed to be implemented.
-this branch will get three extra files.
+# Functions
 
-- shader.cpp
-- shader.h
-- triangle.shader
+```cpp
+void my_function(in int input, out int output, inout int inoutput)
+{
+	input = 0;
+	output = input * inoutput;
+	inoutput = 30;
+}
 
-which will offer a personal preference to implement shader loading.
+void main()
+{
+	int input    = 10;
+	int output   = 2;
+	int inoutput = 40;
 
-# references
-I will leave a link to openGL functions, so you can check what is OpenGL askin for in every step we went through.
-And also a link to LearnOpenGL to get a better perspective of this topic.
+	my_function(input, output, inoutput);
+}
+```
 
+the result of that function would be 
+
+- input = 10;
+- output = 400;
+- inoutput = 30;
+
+as you can see, input does not change, since it was declared as an  `in` value, output and inoutput are allowed to change.
+
+glsl also supports return values like C, but this approach allows multiple return values (do not like it personally, but it is good to know it exists).
+
+```cpp
+vec3 foo(vec3 vector)
+{
+	vec3 res = vector + vec3(1.0f);
+	return res;
+}
+```
+
+# Data types
+```c++
+void main()
+{
+	int x;
+	float y;
+	
+	vec3 triple_vector;
+	mat4 matrix_variable;
+}
+```
+
+almost same data types as C while also adding new types like vec (vec2, vec3, vec4) and matrix (mat2, mat3, mat4), special types that will help us working with shaders.
+
+# Uniforms
+uniforms allow us to put data from our C++ code into shaders, data that we will be able to modify inside the shaders later.
+
+### C++ code
+```c++
+/* while loop */
+{
+	/* bind program */
+	glUseProgram(shader_program);
+
+	/* create and put data into uniform */
+	float data[3] = { 0.0f, 1.0f, 3.0f };
+
+	int location = glGetUniformLocation(shader_program, "my_uniform");
+	glUniform3f(location, data[0], data[1], data[2]);
+
+	// . . .
+}
+```
+
+### GLSL code
+```c++
+#version 460 core
+
+uniform vec3 my_uniform;
+
+void main()
+{
+	/* code logic */
+}
+```
+
+we are simply setting some shader data outside the shader, this is a really usefull in case we required some shared data inside our C++ program and our shader programs.
+
+# Resources
+
+reading both Khronos wiki and docs.gl in order to understand in depth how versatily shaders can be.
+
+[Khronos group wiki](https://www.khronos.org/opengl/wiki/OpenGL_Shading_Language)
 [docs.gl](https://docs.gl/)
-[LearnOpenGL | hello triangle](https://learnopengl.com/Getting-started/Hello-Triangle)

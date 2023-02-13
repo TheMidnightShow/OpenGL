@@ -42,10 +42,16 @@ int main()
 
   example_window.update([&]()
   {
+    float time = glfwGetTime();
+    glm::vec3 colors = glm::vec3(time);
+
     shader_program.use();
+    shader_program.bind_uniform("colors", colors);
     glBindVertexArray(vertex_array);
     glDrawArrays(GL_TRIANGLES, 0, 3);
     glBindVertexArray(0);
+
+    glViewport(0, 0, 2500, 1080);
   });
 
   return 0;
