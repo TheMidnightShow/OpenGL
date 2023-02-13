@@ -1,6 +1,5 @@
 # Texture loading
 
-> [!note]
 > - this step require [stb_image](https://github.com/nothings/stb) header
 
 texture loading is much similar to vertex buffer generation we did in the previous branch.
